@@ -1,0 +1,28 @@
+on:
+  workflow_dispatch: # Trigger this workflow manually
+
+jobs:
+  generate_pat:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+      
+      - name: Generate Azure Databricks PAT
+        id: generate_pat
+        run: |
+          # Authenticate with Azure using the service principal
+          az login --service-principal -u ${{ secrets.SP_CLIENT_ID }} -p ${{ secrets.SP_CLIENT_SECRET }} --tenant ${{ secrets.TENANT_ID }}
+
+          # Get the access token for Databricks
+          ACCESS_TOKEN=$(az account get-access-token --resource https://databricks.azure.net --query accessToken -o tsv)
+
+          # Create a PAT in Databricks
+          RESPONSE=$(curl -s -X POST "$DATABRICKS_INSTANCE/api/2.0/token/create" \
+            -H "Authorization: Bearer $ACCESS_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d '{"comment": "Generated PAT from GitHub Actions"}')
+
+          # Extract and output the PAT
+          PAT_TOKEN=$(echo $RESPONSE | jq -r .token_value)
+          echo "Generated PAT: $PAT_TOKEN"
