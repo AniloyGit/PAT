@@ -1,0 +1,27 @@
+# Authenticate with Azure using the service principal with client secret
+az login --service-principal -u ${{ secrets.SP_CLIENT_ID }} -p ${{ secrets.SP_CLIENT_SECRET }} --tenant ${{ secrets.TENANT_ID }}
+
+# Get the access token for Databricks
+ACCESS_TOKEN=$(az account get-access-token --resource https://databricks.azure.net --query accessToken -o tsv)
+
+# Check if the ACCESS_TOKEN was retrieved successfully
+if [ -z "$ACCESS_TOKEN" ]; then
+  echo "Failed to obtain access token."
+  exit 1
+fi
+
+# Create a PAT in Databricks
+RESPONSE=$(curl -s -X POST "$DATABRICKS_INSTANCE/api/2.0/token/create" \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"comment": "Generated PAT from GitHub Actions"}')
+
+# Check if the response is valid
+if [[ "$RESPONSE" == *"token_value"* ]]; then
+  # Extract and output the PAT
+  PAT_TOKEN=$(echo $RESPONSE | jq -r .token_value)
+  echo "Generated PAT: $PAT_TOKEN"
+else
+  echo "Failed to create PAT. Response: $RESPONSE"
+  exit 1
+fi
