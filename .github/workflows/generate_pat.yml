@@ -8,6 +8,9 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v2
       
+      - name: Install jq
+        run: sudo apt-get update && sudo apt-get install -y jq
+        
       - name: Generate Azure Databricks PAT
         id: generate_pat
         run: |
