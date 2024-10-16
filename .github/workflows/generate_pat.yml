@@ -31,23 +31,7 @@ jobs:
 
     - name: Execute PowerShell Script
       run: |
-        #pwsh -File ./path/to/your-script.ps1 # Update with your script's path
-          $DATABRICKS_INSTANCE = "https://adb-1508850653093358.18.azuredatabricks.net"
-          $DATABRICKS_TOKEN_LIFETIME = "12960000"
-          $patName = "ADBpat" # Name for the Personal Access Token
-          $patLifetime = 3600 # Token lifetime in seconds (optional, default is 3600 seconds or 1 hour)
-
-          $aadToken = Invoke-RestMethod -uri https://login.microsoftonline.com/$TENANT_ID/oauth/v2.0/token -Mithod Post -Headers @( "Content-Type" = "application/x-www-form-urlencoded" } -Body @{ 
-	        CLIENT_ID = $SP_CLIENT_ID;
-	        CLIENT_SECRET = $SP_CLIENT_SECRET
-	        GRANT_TYPE="client_credentials"
-}
-$dbxToken = Invoke-RestMethod -Uri "$DATABRICKS_INSTANCE/api/2.0/token/create" -Method Post -Headers @( "Authorization" = 'Bearer $($aadToken.access_token)" } -Body (ConvertTo-Json @{ lifetime_seconds = $DATABRICKS_TOKEN_LIFETIME
-})
-
-$expirationDateTime = [Systen.DateTimeOffset]::FromUnixTimeMilliseconds($dbxToken.token_info.expirt_time).DateTime
-Write-Host "Databricks token: $($dbxToken.token.value)"
-Write-Host "Expires on: $expirationDateTime"
-
-Invoke-RestMethod -Uri"$DATABRICKS_INSTANCE/api/2.0/token/list" -Method Get -Headers @{ "Authorization" = 'Bearer $($aadToken_access_token)" }
-   
+        pwsh -File ./C:\Users\anilk\OneDrive\Documents\Optum\PS for PAT token.ps1 # Update with your script's path
+              - name: Logout from Azure
+      run: |
+        Disconnect-AzAccount
