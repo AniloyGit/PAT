@@ -1,27 +1,53 @@
-# Authenticate with Azure using the service principal with client secret
-az login --service-principal -u ${{ secrets.SP_CLIENT_ID }} -p ${{ secrets.SP_CLIENT_SECRET }} --tenant ${{ secrets.TENANT_ID }}
+name: Azure PowerShell Workflow
 
-# Get the access token for Databricks
-ACCESS_TOKEN=$(az account get-access-token --resource https://databricks.azure.net --query accessToken -o tsv)
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
 
-# Check if the ACCESS_TOKEN was retrieved successfully
-if [ -z "$ACCESS_TOKEN" ]; then
-  echo "Failed to obtain access token."
-  exit 1
-fi
+jobs:
+  deploy:
+    runs-on: windows-latest
 
-# Create a PAT in Databricks
-RESPONSE=$(curl -s -X POST "$DATABRICKS_INSTANCE/api/2.0/token/create" \
-  -H "Authorization: Bearer $ACCESS_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"comment": "Generated PAT from GitHub Actions"}')
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
 
-# Check if the response is valid
-if [[ "$RESPONSE" == *"token_value"* ]]; then
-  # Extract and output the PAT
-  PAT_TOKEN=$(echo $RESPONSE | jq -r .token_value)
-  echo "Generated PAT: $PAT_TOKEN"
-else
-  echo "Failed to create PAT. Response: $RESPONSE"
-  exit 1
-fi
+    - name: Set up Azure PowerShell
+      uses: azure/setup-powershell@v2
+      with:
+        pwsh-version: '7.2.1' # Specify the version of PowerShell you want to use.
+
+    - name: Login to Azure
+      env:
+        AZURE_CREDENTIALS: ${{ secrets.AZURE_CREDENTIALS }}
+      run: |
+        $ErrorActionPreference = "Stop"
+        $creds = ConvertFrom-Json $env:AZURE_CREDENTIALS
+        Connect-AzAccount -Credential $creds
+
+    - name: Execute PowerShell Script
+      run: |
+        #pwsh -File ./path/to/your-script.ps1 # Update with your script's path
+          $DATABRICKS_INSTANCE = "https://adb-1508850653093358.18.azuredatabricks.net"
+          $DATABRICKS_TOKEN_LIFETIME = "12960000"
+          $patName = "ADBpat" # Name for the Personal Access Token
+          $patLifetime = 3600 # Token lifetime in seconds (optional, default is 3600 seconds or 1 hour)
+
+          $aadToken = Invoke-RestMethod -uri https://login.microsoftonline.com/$TENANT_ID/oauth/v2.0/token -Mithod Post -Headers @( "Content-Type" = "application/x-www-form-urlencoded" } -Body @{ 
+	        CLIENT_ID = $SP_CLIENT_ID;
+	        CLIENT_SECRET = $SP_CLIENT_SECRET
+	        GRANT_TYPE="client_credentials"
+}
+$dbxToken = Invoke-RestMethod -Uri "$DATABRICKS_INSTANCE/api/2.0/token/create" -Method Post -Headers @( "Authorization" = 'Bearer $($aadToken.access_token)" } -Body (ConvertTo-Json @{ lifetime_seconds = $DATABRICKS_TOKEN_LIFETIME
+})
+
+$expirationDateTime = [Systen.DateTimeOffset]::FromUnixTimeMilliseconds($dbxToken.token_info.expirt_time).DateTime
+Write-Host "Databricks token: $($dbxToken.token.value)"
+Write-Host "Expires on: $expirationDateTime"
+
+Invoke-RestMethod -Uri"$DATABRICKS_INSTANCE/api/2.0/token/list" -Method Get -Headers @{ "Authorization" = 'Bearer $($aadToken_access_token)" }
+   
